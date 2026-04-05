@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الاختبار — منصة المسابقات</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo-link" href="index.html">
+      <div class="logo-img">
+        <img src="logo.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">BRIGHT QUIZZES</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <button class="theme-btn" id="theme-btn" title="تبديل الوضع">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <div id="breadcrumb-inner">
+      <span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;"></span>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <div class="quiz-container">
+    <div id="quiz-root">
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <span>جاري تحميل الأسئلة...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="#">من نحن</a>
+      <a href="#">تواصل معنا</a>
+    </div>
+      <div class="logo-img">
+        <img src="logo2.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <a href="#" style="font-size:0.5rem;color:var(--text-muted);
+  text-decoration:none;transition:color var(--transition);">pawered by bright step initaitive</a>
+    <div class="footer-copy">© 2026 منصة المسابقات</div>
+  </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+const LETTERS = ['أ','ب','ج','د','هـ'];
+
+// ─── STATE ────────────────────────────────────────
+let quizData   = null;   // loaded from JSON
+let compId     = null;
+let formId     = null;
+let selections = {};     // { qIndex: { chosen, isCorrect } }
+let checked    = false;
+
+// ─── INIT ─────────────────────────────────────────
+async function init() {
+  compId = parseInt(getParam('comp'));
+  formId = parseInt(getParam('form'));
+  if (!compId || !formId) { location.href = 'index.html'; return; }
+
+  try {
+    // Load meta for breadcrumb
+    const meta = await loadMeta();
+    const comp = meta.competitions.find(c => c.id === compId);
+    const form = comp?.forms.find(f => f.id === formId);
+
+    renderBreadcrumb([
+      { label: '🏠 الرئيسية',         href: 'index.html' },
+      { label: (comp?.emoji||'') + ' ' + (comp?.title||''), href: `competition.html?id=${compId}` },
+      { label: form?.label || 'الاختبار' }
+    ]);
+
+    // Load quiz questions
+    quizData = await loadQuizData(compId, formId);
+    renderQuiz();
+
+  } catch(e) {
+    document.getElementById('quiz-root').innerHTML =
+      `<div class="error-box">⚠️ تعذّر تحميل الاختبار: ${e.message}</div>`;
+  }
+}
+
+// ─── RENDER QUIZ ──────────────────────────────────
+function renderQuiz() {
+  selections = {};
+  checked    = false;
+
+  const qs = quizData.questions;
+
+  document.getElementById('quiz-root').innerHTML = `
+    <!-- Top bar -->
+    <div class="quiz-top-bar">
+      <div class="quiz-icon-wrap">📝</div>
+      <div class="quiz-meta">
+        <h3>${quizData.title}</h3>
+        <p>${qs.length} سؤال — اختيار متعدد</p>
+      </div>
+      <div class="quiz-prog">
+        <span class="prog-txt" id="prog-txt">0 / ${qs.length}</span>
+        <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    <div id="questions-list">${qs.map(renderQuestion).join('')}</div>
+
+    <!-- Actions -->
+    <div class="quiz-actions">
+      <button class="btn-primary" id="btn-check" onclick="checkAnswers()">✓ تحقق من الإجابات</button>
+      <button class="btn-ghost"   onclick="resetQuiz()">↺ إعادة</button>
+      <button class="btn-ghost"   onclick="location.href='competition.html?id=${compId}'" style="margin-right:auto;">← النماذج</button>
+    </div>
+
+    <!-- Result -->
+    <div class="result-box" id="result-box">
+      <div class="result-emoji" id="r-emoji"></div>
+      <div class="result-title" id="r-title"></div>
+      <div class="result-score" id="r-score"></div>
+      <div class="result-btns">
+        <button class="btn-gold"  onclick="resetQuiz()">↺ حاول مجدداً</button>
+        <button class="btn-ghost" onclick="location.href='index.html'">🏠 الرئيسية</button>
+      </div>
+    </div>`;
+}
+
+function renderQuestion(q, qi) {
+  const opts = q.options.map((o, oi) => `
+    <div class="option" id="opt-${qi}-${oi}" onclick="pick(${qi},${oi},${oi===q.correct})">
+      <div class="opt-ltr">${LETTERS[oi]}</div>
+      <div class="opt-text">${o}</div>
+      <div class="opt-check"><div class="opt-dot"></div></div>
+    </div>`).join('');
+
+  return `
+    <div class="q-card" id="qcard-${qi}">
+      <div class="q-head">
+        <div class="q-num">س${qi+1}</div>
+        <div class="q-text">${q.text}</div>
+      </div>
+      <div class="options">${opts}</div>
+      <div class="q-feedback" id="qfb-${qi}"></div>
+    </div>`;
+}
+
+// ─── PICK ─────────────────────────────────────────
+function pick(qi, oi, isCorrect) {
+  if (checked) return;
+  const total = quizData.questions[qi].options.length;
+  for (let i = 0; i < total; i++)
+    document.getElementById(`opt-${qi}-${i}`).classList.remove('selected');
+  document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+  selections[qi] = { chosen: oi, isCorrect };
+  document.getElementById(`qcard-${qi}`).classList.add('answered');
+  updateProgress();
+}
+
+function updateProgress() {
+  const total    = quizData.questions.length;
+  const answered = Object.keys(selections).length;
+  document.getElementById('prog-txt').textContent  = `${answered} / ${total}`;
+  document.getElementById('prog-fill').style.width = `${(answered/total)*100}%`;
+}
+
+// ─── CHECK ────────────────────────────────────────
+function checkAnswers() {
+  if (checked) return;
+  checked = true;
+  let correct = 0;
+
+  quizData.questions.forEach((q, qi) => {
+    const total = q.options.length;
+    const sel   = selections[qi];
+    const fb    = document.getElementById(`qfb-${qi}`);
+
+    for (let oi = 0; oi < total; oi++) {
+      const el = document.getElementById(`opt-${qi}-${oi}`);
+      el.classList.remove('selected');
+      if (oi === q.correct)             el.classList.add('correct');
+      else if (el.classList.contains('selected') || (sel && sel.chosen === oi))
+                                        el.classList.add('wrong');
+      else                              el.classList.add('dim');
+    }
+    // re-apply correct highlight
+    document.getElementById(`opt-${qi}-${q.correct}`).classList.remove('dim','wrong');
+    document.getElementById(`opt-${qi}-${q.correct}`).classList.add('correct');
+
+    const correctLetter = LETTERS[q.correct];
+    if (!sel) {
+      fb.className = 'q-feedback bad show';
+      fb.textContent = `⚠ لم تختر إجابة. الصحيحة: (${correctLetter})`;
+    } else if (sel.isCorrect) {
+      correct++;
+      fb.className = 'q-feedback ok show';
+      fb.textContent = '✓ إجابة صحيحة!';
+    } else {
+      fb.className = 'q-feedback bad show';
+      fb.textContent = `✗ إجابة خاطئة. الصحيحة: (${correctLetter})`;
+    }
+  });
+
+  const total = quizData.questions.length;
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('prog-txt').textContent  = `${total} / ${total}`;
+  document.getElementById('btn-check').disabled = true;
+
+  const pct = Math.round((correct / total) * 100);
+  const emoji = pct === 100 ? '🏆' : pct >= 60 ? '👍' : '💪';
+  const title = pct === 100 ? 'ممتاز! كل إجاباتك صحيحة!'
+              : pct >= 60   ? 'جيد! يمكنك التحسن أكثر.'
+              :               'حاول مجدداً، ستنجح!';
+
+  document.getElementById('r-emoji').textContent = emoji;
+  document.getElementById('r-title').textContent = title;
+  document.getElementById('r-score').innerHTML =
+    `نتيجتك: <strong>${correct} / ${total}</strong> (${pct}%)`;
+
+  const rb = document.getElementById('result-box');
+  rb.classList.add('show');
+  setTimeout(() => rb.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+}
+
+function resetQuiz() { renderQuiz(); }
+
+// ─── START ────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

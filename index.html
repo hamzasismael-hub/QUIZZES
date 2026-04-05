@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة المسابقات</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <a class="logo-link" href="index.html">
+      <div class="logo-img">
+        <img src="logo.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">BRIGHT QUIZZES</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <button class="theme-btn" id="theme-btn" title="تبديل الوضع">🌙</button>
+    </div>
+  </div>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <div id="breadcrumb-inner">
+      <span class="bc-cur">🏠 الرئيسية</span>
+    </div>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="page-wrap">
+  <div class="hero">
+    <div class="hero-label">✦ اختر مسابقتك وابدأ التحدي ✦</div>
+    <h1>مركز التقييم<br><em>والمسابقات</em></h1>
+    <p class="hero-desc">اختر إحدى المسابقات للاطلاع على النماذج المتاحة ثم ابدأ الإجابة.</p>
+    <div class="hero-stats" id="hero-stats">
+      <div class="stat-item"><span class="stat-num" id="stat-comps">—</span><span class="stat-lbl">مسابقة</span></div>
+      <div class="stat-item"><span class="stat-num" id="stat-forms">—</span><span class="stat-lbl">نموذج</span></div>
+    </div>
+  </div>
+
+  <!-- COMPETITIONS -->
+  <div class="container">
+    <div class="section-head">
+      <h2>المسابقات المتاحة</h2>
+      <div class="section-line"></div>
+      <div class="section-badge" id="comps-badge">—</div>
+    </div>
+    <div class="comps-grid" id="comps-grid">
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <span>جاري التحميل...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="#">من نحن</a>
+      <a href="#">تواصل معنا</a>
+    </div>
+      <div class="logo-img">
+        <img src="logo2.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <a href="#" style="font-size:0.5rem;color:var(--text-muted);
+  text-decoration:none;transition:color var(--transition);">pawered by bright step initaitive</a>
+    <div class="footer-copy">© 2026 منصة المسابقات</div>
+  </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+const LETTERS = ['أ','ب','ج','د','هـ'];
+
+async function init() {
+  try {
+    const data = await loadMeta();
+    const comps = data.competitions;
+
+    // Stats
+    const totalForms = comps.reduce((s, c) => s + c.forms.length, 0);
+    document.getElementById('stat-comps').textContent = comps.length;
+    document.getElementById('stat-forms').textContent = totalForms;
+    document.getElementById('comps-badge').textContent = comps.length + ' مسابقات';
+
+    // Cards
+    const grid = document.getElementById('comps-grid');
+    grid.innerHTML = comps.map(comp => {
+      const totalQ = comp.forms.reduce((s, f) => s + f.count, 0);
+      return `
+        <div class="comp-card" onclick="location.href='competition.html?id=${comp.id}'">
+          <div class="comp-card-banner">${comp.emoji}</div>
+          <div class="comp-card-body">
+            <div class="comp-card-tag">مسابقة ${comp.id}</div>
+            <div class="comp-card-title">${comp.title}</div>
+            <div class="comp-card-desc">${comp.desc}</div>
+            <div class="comp-card-footer">
+              <div class="comp-card-meta">
+                <span class="meta-chip">📄 ${comp.forms.length} نماذج</span>
+                <span class="meta-chip">❓ ${totalQ} سؤال</span>
+                <span class="meta-chip">⚡ ${comp.level}</span>
+              </div>
+              <div class="comp-card-arrow">←</div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('comps-grid').innerHTML =
+      `<div class="error-box">⚠️ تعذّر تحميل البيانات: ${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>النماذج — منصة المسابقات</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo-link" href="index.html">
+      <div class="logo-img">
+        <img src="logo.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">BRIGHT QUIZZES</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <button class="theme-btn" id="theme-btn" title="تبديل الوضع">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <div id="breadcrumb-inner">
+      <span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;"></span>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <div class="page-hero" id="page-hero">
+    <div class="loading-screen" style="min-height:80px;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section-head">
+      <h2>النماذج المتاحة</h2>
+      <div class="section-line"></div>
+      <div class="section-badge" id="forms-badge">—</div>
+    </div>
+    <div class="forms-grid" id="forms-grid">
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <span>جاري التحميل...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="#">من نحن</a>
+      <a href="#">تواصل معنا</a>
+    </div>
+      <div class="logo-img">
+        <img src="logo2.jpeg" alt="شعار" onerror="this.style.display='none';this.parentElement.textContent='🏆'">
+      </div>
+      <a href="#" style="font-size:0.5rem;color:var(--text-muted);
+  text-decoration:none;transition:color var(--transition);">pawered by bright step initaitive</a>
+    <div class="footer-copy">© 2026 منصة المسابقات</div>
+  </div>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+const FORM_LETTERS = ['أ','ب','ج','د','هـ','و'];
+
+async function init() {
+  const compId = parseInt(getParam('id'));
+  if (!compId) { location.href = 'index.html'; return; }
+
+  try {
+    const data  = await loadMeta();
+    const comp  = data.competitions.find(c => c.id === compId);
+    if (!comp) throw new Error('المسابقة غير موجودة');
+
+    // Breadcrumb
+    renderBreadcrumb([
+      { label: '🏠 الرئيسية', href: 'index.html' },
+      { label: comp.emoji + ' ' + comp.title }
+    ]);
+
+    // Page hero
+    document.getElementById('page-hero').innerHTML = `
+      <h2>${comp.emoji} ${comp.title}</h2>
+      <p>${comp.desc} — اختر النموذج وابدأ الإجابة</p>`;
+
+    // Badge
+    document.getElementById('forms-badge').textContent = comp.forms.length + ' نماذج';
+
+    // Form cards
+    document.getElementById('forms-grid').innerHTML = comp.forms.map((f, i) => `
+      <div class="form-card" onclick="location.href='quiz.html?comp=${comp.id}&form=${f.id}'">
+        <div class="form-card-top">
+          <div class="form-num">${FORM_LETTERS[i] || i+1}</div>
+          <h3>${f.label}</h3>
+        </div>
+        <div class="form-card-body">
+          <div class="form-rows">
+            <div class="form-row">
+              <span class="form-row-label">عدد الأسئلة</span>
+              <span class="form-row-val">${f.count} سؤال</span>
+            </div>
+            <div class="form-row">
+              <span class="form-row-label">نوع الأسئلة</span>
+              <span class="form-row-val">اختيار متعدد</span>
+            </div>
+            <div class="form-row">
+              <span class="form-row-label">الحالة</span>
+              <span class="form-row-val ok">متاح ✓</span>
+            </div>
+          </div>
+          <button class="form-start-btn">▶ ابدأ ${f.label}</button>
+        </div>
+      </div>`).join('');
+
+  } catch(e) {
+    document.getElementById('forms-grid').innerHTML =
+      `<div class="error-box">⚠️ ${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
